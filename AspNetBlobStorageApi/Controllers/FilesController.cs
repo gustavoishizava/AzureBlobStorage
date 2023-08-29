@@ -1,3 +1,5 @@
+using System.Text;
+using Azure.Storage.Blobs;
 using Infrastructure;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Mvc;
@@ -10,10 +12,12 @@ namespace AspNetBlobStorageApi.Controllers
     {
         private const string _fileType = "text/csv";
         private readonly IAzureBlobStorageService _azureBlobStorageService;
+        private readonly BlobContainerClient _blobContainerClient;
 
-        public FilesController(IAzureBlobStorageService fileService)
+        public FilesController(IAzureBlobStorageService fileService, BlobContainerClient blobContainerClient)
         {
             _azureBlobStorageService = fileService;
+            _blobContainerClient = blobContainerClient;
         }
 
         [HttpPost]
@@ -37,6 +41,19 @@ namespace AspNetBlobStorageApi.Controllers
                 return NotFound();
 
             return File(fileStream, _fileType);
+        }
+
+        [HttpGet("stream")]
+        public async Task<IActionResult> GetStreamingAsync([FromQuery] Guid id)
+        {
+            var memoryStream = new MemoryStream();
+
+            var blobClient = _blobContainerClient.GetBlobClient(id.ToString());
+            await blobClient.DownloadToAsync(memoryStream);
+
+            memoryStream.Position = 0;
+
+            return File(memoryStream, _fileType);
         }
     }
 }
